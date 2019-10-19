@@ -1,0 +1,7 @@
+{
+    "name": "tristankenney/codeclimate-phpstan",
+	"require": {
+		"phpstan/phpstan": "~0.11",
+		"nocoolnametom/phpstan-codeclimate": "~1.1"
+	}
+}

@@ -1,0 +1,73 @@
+#!/usr/bin/env php
+<?php declare(strict_types = 1);
+
+require_once(__DIR__ . '/../vendor/autoload.php');
+
+use NoCoolNameTom\PHPStan\ErrorFormatter\CodeclimateErrorFormatter;
+use PHPStan\Command\AnalyseApplication;
+use PHPStan\Command\CommandHelper;
+use PHPStan\Command\InceptionNotSuccessfulException;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\StreamOutput;
+
+chdir('/code');
+
+$pluginConfig = file_get_contents('/config.json');
+fwrite(STDERR, "Config loaded: " . $pluginConfig . PHP_EOL);
+$pluginConfig = is_file('/config.json') && is_readable('/config.json') ? json_decode($pluginConfig, true) : [];
+
+$config = $pluginConfig['config'] ?? [];
+$paths = $options['paths'] = $config['include_paths'] ?? [];
+$level = $options['--level'] = isset($config['level']) ? (string) $config['level'] : null;
+$autoloadFile = $options['--autoload-file'] = isset($config['autoload_file']) ? (string) $config['autoload_file'] :  null;
+$projectConfigFile = $options['--project-config-file'] = isset($config['project_config_file']) ? (string) $config['project_config_file'] :  null;
+
+$configFileExists = function() use ($projectConfigFile) {
+    foreach(['/code/' . $projectConfigFile, '/code/phpstan.neon', '/code/phpstan.neon.dist'] as $configFile) {
+        if (is_file($configFile) && is_readable($configFile)) {
+            return true;
+        }
+    }
+    return false;
+};
+
+if (empty($paths) && !$configFileExists()) {
+    fwrite(STDERR, "No paths supplied" . PHP_EOL);
+    exit();
+}
+
+try {
+    $input = new ArrayInput($options);
+    $output = new StreamOutput(STDOUT);
+
+    $inceptionResult = CommandHelper::begin(
+        $input,
+        $output,
+        $paths,
+        null,
+        null,
+        $autoloadFile,
+        $projectConfigFile,
+        $level
+    );
+
+    $container = $inceptionResult->getContainer();
+    $application = $container->getByType(AnalyseApplication::class);
+
+    $inceptionResult->handleReturn(
+        $application->analyse(
+            $inceptionResult->getFiles(),
+            $inceptionResult->isOnlyFiles(),
+            $inceptionResult->getConsoleStyle(),
+            new CodeclimateErrorFormatter(),
+            $inceptionResult->isDefaultLevelUsed(),
+            false,
+            $inceptionResult->getProjectConfigFile()
+        )
+    );
+} catch (InceptionNotSuccessfulException $e) {
+    fwrite(STDERR, $e->getMessage() . PHP_EOL);
+    exit(1);
+}
+
+exit();

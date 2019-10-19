@@ -1,0 +1,11 @@
+{
+    "name": "codeclimate-phpstan",
+    "description": "PHPStan",
+    "maintainer": {
+      "name": "Tristan Kenney",
+      "email": "tristan@kenney.co"
+    },
+    "languages": ["PHP"],
+    "version": "351307",
+    "spec_version": "0.0.1"
+  }
